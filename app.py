@@ -4,7 +4,7 @@ import smtplib
 from email.message import EmailMessage
 import os
 import numpy as np
-import threading
+
 import resend
 
 
@@ -27,7 +27,11 @@ def process():
     impacts = request.form["impacts"]
     email = request.form["email"]
 
-    df = pd.read_csv(file)
+    input_path = "/tmp/" + file.filename
+    file.save(input_path)
+
+    df = pd.read_csv(input_path)
+
 
     weights_list = list(map(float, weights.split(",")))
     impacts_list = impacts.split(",")
@@ -90,7 +94,7 @@ def process():
     # TEMP: Just save file (Replace later with TOPSIS logic)
     df.to_csv("result.csv", index=False)
 
-    threading.Thread(target=send_email, args=(email,), daemon=True).start()
+    send_email(email, df.to_csv(index=False))
 
 
     result_html = df.to_html(classes="table table-sm table-bordered table-striped", index=False)
@@ -100,21 +104,31 @@ def process():
  
 
 # EMAIL FUNCTION
-def send_email(receiver):
-    try:
-        resend.api_key = os.environ.get("RESEND_API_KEY")
+ddef send_email(receiver_email, content_csv):
 
-        resend.Emails.send({
-            "from": "onboarding@resend.dev",
-            "to": receiver,
-            "subject": "TOPSIS Result",
-            "html": "<h3>Your TOPSIS result is generated successfully.</h3>"
-        })
+    sender_email = os.environ.get("EMAIL_USER")
+    sender_password = os.environ.get("EMAIL_PASS")
 
-        print("Email sent via Resend")
+    if not sender_email or not sender_password:
+        raise Exception("Email credentials not set")
 
-    except Exception as e:
-        print("Resend Email Error:", e)
+    msg = EmailMessage()
+    msg["Subject"] = "TOPSIS Result"
+    msg["From"] = sender_email
+    msg["To"] = receiver_email
+
+    msg.set_content("Please find the TOPSIS result attached.")
+
+    msg.add_attachment(
+        content_csv.encode(),
+        maintype="text",
+        subtype="csv",
+        filename="result.csv"
+    )
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
 
 # RUN APP
 import os
