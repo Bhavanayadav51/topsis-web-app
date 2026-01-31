@@ -117,7 +117,7 @@ def send_email(receiver):
         )
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login("bhavanayadav5100@gmail.com", os.environ.get("qsonvvateqgmiqtx")
+        smtp.login("bhavanayadav5100@gmail.com", os.environ.get("EMAIL_PASSWORD")
         smtp.send_message(msg)
 
 
