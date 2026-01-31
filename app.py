@@ -4,6 +4,8 @@ import smtplib
 from email.message import EmailMessage
 import os
 import numpy as np
+import threading
+
 
 
 app = Flask(__name__)
@@ -87,7 +89,8 @@ def process():
     # TEMP: Just save file (Replace later with TOPSIS logic)
     df.to_csv("result.csv", index=False)
 
-    send_email(email)
+    threading.Thread(target=send_email, args=(email,)).start()
+
 
     result_html = df.to_html(classes="table table-sm table-bordered table-striped", index=False)
 
