@@ -5,6 +5,7 @@ from email.message import EmailMessage
 import os
 import numpy as np
 import threading
+import resend
 
 
 
@@ -101,38 +102,19 @@ def process():
 # EMAIL FUNCTION
 def send_email(receiver):
     try:
-        print("EMAIL FUNCTION STARTED")
+        resend.api_key = os.environ.get("RESEND_API_KEY")
 
-        msg = EmailMessage()
-        msg["Subject"] = "TOPSIS Result"
-        msg["From"] = "bhavanayadav5100@gmail.com"
-        msg["To"] = receiver
+        resend.Emails.send({
+            "from": "onboarding@resend.dev",
+            "to": receiver,
+            "subject": "TOPSIS Result",
+            "html": "<h3>Your TOPSIS result is generated successfully.</h3>"
+        })
 
-        msg.set_content("Please find attached TOPSIS result")
-
-        with open("result.csv", "rb") as f:
-            msg.add_attachment(
-                f.read(),
-                maintype="application",
-                subtype="octet-stream",
-                filename="result.csv"
-            )
-
-        print("CONNECTING SMTP")
-
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            print("LOGIN ATTEMPT")
-            smtp.login(
-                "bhavanayadav5100@gmail.com",
-                os.environ.get("EMAIL_PASSWORD")
-            )
-            print("LOGIN SUCCESS")
-
-            smtp.send_message(msg)
-            print("EMAIL SENT SUCCESSFULLY")
+        print("Email sent via Resend")
 
     except Exception as e:
-        print("EMAIL ERROR:", e)
+        print("Resend Email Error:", e)
 
 # RUN APP
 import os
