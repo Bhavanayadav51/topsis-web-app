@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TOPSIS Decision System</title>
+
+    <!-- Bootstrap CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body style="background: #536b8f; display:flex; align-items:center; min-height:100vh;">
+
+<div class="container" style="max-width:500px;">
+
+    <div class="card shadow p-3">
+        <h4 class="text-center mb-3">TOPSIS Decision Support</h4>
+
+        <form method="POST" action="/process" enctype="multipart/form-data">
+
+            <div class="mb-2">
+                <label class="form-label small">CSV File</label>
+                <input type="file" name="file" class="form-control form-control-sm" required>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label small">Weights</label>
+                <input type="text" name="weights" class="form-control form-control-sm"
+                       placeholder="1,1,1,1" required>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label small">Impacts</label>
+                <input type="text" name="impacts" class="form-control form-control-sm"
+                       placeholder="+,+,-,+" required>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label small">Email</label>
+                <input type="email" name="email" class="form-control form-control-sm" required>
+            </div>
+
+            <div class="d-grid mt-3">
+                <button type="submit" class="btn btn-primary">
+                    Generate Result
+                </button>
+            </div>
+
+        </form>
+    </div>
+
+</div>
+
+</body>
+</html>
