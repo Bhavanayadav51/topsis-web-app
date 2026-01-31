@@ -89,7 +89,7 @@ def process():
     # TEMP: Just save file (Replace later with TOPSIS logic)
     df.to_csv("result.csv", index=False)
 
-    threading.Thread(target=send_email, args=(email,)).start()
+    threading.Thread(target=send_email, args=(email,), daemon=True).start()
 
 
     result_html = df.to_html(classes="table table-sm table-bordered table-striped", index=False)
@@ -101,6 +101,8 @@ def process():
 # EMAIL FUNCTION
 def send_email(receiver):
     try:
+        print("EMAIL FUNCTION STARTED")
+
         msg = EmailMessage()
         msg["Subject"] = "TOPSIS Result"
         msg["From"] = "bhavanayadav5100@gmail.com"
@@ -116,17 +118,21 @@ def send_email(receiver):
                 filename="result.csv"
             )
 
+        print("CONNECTING SMTP")
+
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            print("LOGIN ATTEMPT")
             smtp.login(
                 "bhavanayadav5100@gmail.com",
                 os.environ.get("EMAIL_PASSWORD")
             )
-            smtp.send_message(msg)
+            print("LOGIN SUCCESS")
 
-        print("Email sent successfully")
+            smtp.send_message(msg)
+            print("EMAIL SENT SUCCESSFULLY")
 
     except Exception as e:
-        print("Email error:", e)
+        print("EMAIL ERROR:", e)
 
 # RUN APP
 import os
