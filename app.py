@@ -4,7 +4,6 @@ import numpy as np
 import os
 import smtplib
 import tempfile
-import threading
 from email.message import EmailMessage
 from dotenv import load_dotenv
 
@@ -58,34 +57,30 @@ def send_email(receiver_email, content_csv):
             return False
 
         msg = EmailMessage()
-        msg["Subject"] = "TOPSIS Result"
+        msg["Subject"] = "TOPSIS Analysis Result"
         msg["From"] = sender_email
         msg["To"] = receiver_email
-        msg.set_content("Please find the TOPSIS results attached.")
+        msg.set_content("Please find the TOPSIS analysis results attached.")
 
         msg.add_attachment(
             content_csv.encode(),
             maintype="text",
             subtype="csv",
-            filename="result.csv"
+            filename="topsis_result.csv"
         )
 
+        print(f"Attempting to send email to {receiver_email}")
+        print(f"Using sender: {sender_email}")
+        
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(sender_email, sender_password)
             server.send_message(msg)
         
-        print(f"Email sent successfully to {receiver_email}")
+        print(f"✓ Email sent successfully to {receiver_email}")
         return True
     except Exception as e:
-        print(f"Email error: {str(e)}")
+        print(f"✗ Email error: {type(e).__name__}: {str(e)}")
         return False
-
-
-def send_email_async(receiver_email, content_csv):
-    """Send email in background thread"""
-    thread = threading.Thread(target=send_email, args=(receiver_email, content_csv))
-    thread.daemon = True
-    thread.start()
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -112,13 +107,16 @@ def index():
             # Clean up temp file
             os.unlink(input_path)
 
-            # Send email asynchronously if requested
+            # Send email if requested (synchronous)
+            email_sent = False
             if send_email_flag == "on" and email:
-                send_email_async(email, result_df.to_csv(index=False))
+                email_sent = send_email(email, result_df.to_csv(index=False))
 
             return render_template(
                 "result.html",
-                tables=[result_df.to_html(classes="table table-striped", index=False)]
+                tables=[result_df.to_html(classes="table table-striped", index=False)],
+                email_sent=email_sent,
+                email=email if send_email_flag == "on" else None
             )
 
         except Exception as e:

@@ -75,6 +75,16 @@
 
         <h3 class="text-center mb-4 result-title">TOPSIS Result</h3>
 
+        {% if email_sent and email %}
+        <div class="alert alert-success" role="alert">
+            ✓ Results sent to {{ email }}
+        </div>
+        {% elif email and not email_sent %}
+        <div class="alert alert-warning" role="alert">
+            ⚠ Email could not be sent to {{ email }}. Check email credentials.
+        </div>
+        {% endif %}
+
         <div class="table-responsive">
             {% for table in tables %}
                 {{ table | safe }}
