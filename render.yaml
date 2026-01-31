@@ -2,5 +2,7 @@ services:
   - type: web
     name: topsis-web-app
     env: python
+    region: oregon
+    plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn app:app"
+    startCommand: "gunicorn app:app --workers 1 --worker-class sync --timeout 60"
