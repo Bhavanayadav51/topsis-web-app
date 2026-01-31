@@ -22,37 +22,72 @@ def home():
 @app.route("/process", methods=["POST"])
 def process():
 
-    file = request.files["file"]
-    weights = request.form["weights"]
-    impacts = request.form["impacts"]
-    email = request.form["email"]
+    file = request.files.get("file")
+    weights = request.form.get("weights", "").strip()
+    impacts = request.form.get("impacts", "").strip()
+    email = request.form.get("email", "").strip()
 
-    # ✅ TEMP FILE SAFE (LOCAL + RENDER)
+    # --- INPUT VALIDATION ---
+    if file is None or file.filename == "":
+        return render_template("result.html", table="<p style='color:red;'>No file uploaded.</p>")
+
+    if not file.filename.endswith(".csv"):
+        return render_template("result.html", table="<p style='color:red;'>Please upload a valid CSV file.</p>")
+
+    if not weights:
+        return render_template("result.html", table="<p style='color:red;'>Weights field is empty.</p>")
+
+    if not impacts:
+        return render_template("result.html", table="<p style='color:red;'>Impacts field is empty.</p>")
+
+    if not email:
+        return render_template("result.html", table="<p style='color:red;'>Email field is empty.</p>")
+
+    # --- SAVE TO TEMP FILE ---
     temp_dir = tempfile.gettempdir()
     input_path = os.path.join(temp_dir, file.filename)
-    file.save(input_path)
 
-    df = pd.read_csv(input_path)
+    try:
+        file.save(input_path)
+        df = pd.read_csv(input_path)
+    except Exception as e:
+        return render_template("result.html", table=f"<p style='color:red;'>Error reading CSV: {str(e)}</p>")
+    finally:
+        # Clean up temp file after reading
+        if os.path.exists(input_path):
+            os.remove(input_path)
 
-    weights_list = list(map(float, weights.split(",")))
-    impacts_list = impacts.split(",")
+    # --- PARSE WEIGHTS AND IMPACTS ---
+    try:
+        weights_list = list(map(float, weights.split(",")))
+    except ValueError:
+        return render_template("result.html", table="<p style='color:red;'>Weights must be numeric values separated by commas.</p>")
 
-    data = df.iloc[:, 1:].astype(float)
+    impacts_list = [i.strip() for i in impacts.split(",")]
+
+    # Need at least 2 columns (1 name + 1 criteria)
+    if df.shape[1] < 2:
+        return render_template("result.html", table="<p style='color:red;'>CSV must have at least one name column and one criteria column.</p>")
+
+    try:
+        data = df.iloc[:, 1:].astype(float)
+    except ValueError:
+        return render_template("result.html", table="<p style='color:red;'>All criteria columns must contain numeric values.</p>")
+
     num_criteria = data.shape[1]
 
-    # VALIDATION
+    # --- VALIDATION ---
     if len(weights_list) != num_criteria:
-        return f"Please enter {num_criteria} weights"
+        return render_template("result.html", table=f"<p style='color:red;'>Please enter exactly {num_criteria} weights (you entered {len(weights_list)}).</p>")
 
     if len(impacts_list) != num_criteria:
-        return f"Please enter {num_criteria} impacts"
+        return render_template("result.html", table=f"<p style='color:red;'>Please enter exactly {num_criteria} impacts (you entered {len(impacts_list)}).</p>")
 
     for i in impacts_list:
         if i not in ["+", "-"]:
-            return "Impacts must be + or -"
+            return render_template("result.html", table="<p style='color:red;'>Impacts must be + or - only (comma separated).</p>")
 
-    # ⭐ TOPSIS CALCULATION
-
+    # --- TOPSIS CALCULATION ---
     norm = data / np.sqrt((data**2).sum())
     weighted = norm * np.array(weights_list)
 
@@ -77,24 +112,25 @@ def process():
 
     df["Topsis Score"] = score.round(6)
     df["Rank"] = df["Topsis Score"].rank(ascending=False).astype(int)
-
     df = df.sort_values("Rank")
 
-    # Save result CSV
+    # --- SEND EMAIL ---
     result_csv = df.to_csv(index=False)
 
-    # Send Email
     try:
         send_email(email, result_csv)
+        email_status = "<p style='color:green;'>✅ Result has been sent to your email.</p>"
     except Exception as e:
         print("Email Error:", e)
+        email_status = "<p style='color:orange;'>⚠️ Email could not be sent, but your result is below.</p>"
 
+    # --- RENDER RESULT ---
     result_html = df.to_html(
         classes="table table-sm table-bordered table-striped",
         index=False
     )
 
-    return render_template("result.html", table=result_html)
+    return render_template("result.html", table=email_status + result_html)
 
 
 # EMAIL FUNCTION
@@ -104,7 +140,7 @@ def send_email(receiver_email, content_csv):
     sender_password = os.environ.get("EMAIL_PASS")
 
     if not sender_email or not sender_password:
-        raise Exception("Email credentials not set")
+        raise Exception("Email credentials not set in environment variables")
 
     msg = EmailMessage()
     msg["Subject"] = "TOPSIS Result"
@@ -120,9 +156,19 @@ def send_email(receiver_email, content_csv):
         filename="result.csv"
     )
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(sender_email, sender_password)
-        server.send_message(msg)
+    # Try port 587 with STARTTLS (more reliable on most hosting)
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+    except Exception:
+        # Fallback to port 465 with SSL
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
 
 
 # RUN APP
