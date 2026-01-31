@@ -15,7 +15,7 @@
     <div class="card shadow p-3">
         <h4 class="text-center mb-3">TOPSIS Decision Support</h4>
 
-        <form method="POST" action="/process" enctype="multipart/form-data">
+        <form method="POST" action="/" enctype="multipart/form-data">
 
             <div class="mb-2">
                 <label class="form-label small">CSV File</label>
@@ -37,6 +37,13 @@
             <div class="mb-2">
                 <label class="form-label small">Email</label>
                 <input type="email" name="email" class="form-control form-control-sm" required>
+            </div>
+
+            <div class="mb-2 form-check">
+                <input type="checkbox" name="send_email" class="form-check-input" id="send_email">
+                <label class="form-check-label small" for="send_email">
+                    Send results via email
+                </label>
             </div>
 
             <div class="d-grid mt-3">

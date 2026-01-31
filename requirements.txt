@@ -1,7 +1,6 @@
-Flask
-pandas
-numpy
-gunicorn
-secure-smtplib
-resend
-python-dotenv
+flask==3.0.0
+pandas==2.1.1
+numpy==1.26.0
+python-dotenv==1.0.0
+werkzeug==3.0.0
+gunicorn==21.2.0
