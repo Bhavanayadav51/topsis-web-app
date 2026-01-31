@@ -4,3 +4,4 @@ numpy
 gunicorn
 secure-smtplib
 resend
+python-dotenv

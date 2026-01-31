@@ -4,10 +4,10 @@ import smtplib
 from email.message import EmailMessage
 import os
 import numpy as np
+from dotenv import load_dotenv
+import tempfile
 
-import resend
-
-
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -27,24 +27,20 @@ def process():
     impacts = request.form["impacts"]
     email = request.form["email"]
 
-    input_path = "/tmp/" + file.filename
+    # ✅ TEMP FILE SAFE (LOCAL + RENDER)
+    temp_dir = tempfile.gettempdir()
+    input_path = os.path.join(temp_dir, file.filename)
     file.save(input_path)
 
     df = pd.read_csv(input_path)
 
-
     weights_list = list(map(float, weights.split(",")))
     impacts_list = impacts.split(",")
 
-    # Save first column (Name column)
-    names = df.iloc[:, 0]
-
-    # Numeric data
     data = df.iloc[:, 1:].astype(float)
-
     num_criteria = data.shape[1]
 
-    # ---------- GENERIC VALIDATION ----------
+    # VALIDATION
     if len(weights_list) != num_criteria:
         return f"Please enter {num_criteria} weights"
 
@@ -55,15 +51,11 @@ def process():
         if i not in ["+", "-"]:
             return "Impacts must be + or -"
 
-    # ---------- TOPSIS START ----------
+    # ⭐ TOPSIS CALCULATION
 
-    # Normalize
     norm = data / np.sqrt((data**2).sum())
-
-    # Apply Weights (Generic Safe)
     weighted = norm * np.array(weights_list)
 
-    # Ideal Best & Worst
     ideal_best = []
     ideal_worst = []
 
@@ -78,33 +70,35 @@ def process():
     ideal_best = np.array(ideal_best)
     ideal_worst = np.array(ideal_worst)
 
-    # Distance
     dist_best = np.sqrt(((weighted - ideal_best) ** 2).sum(axis=1))
     dist_worst = np.sqrt(((weighted - ideal_worst) ** 2).sum(axis=1))
 
-    # Score
     score = dist_worst / (dist_best + dist_worst)
 
-    # Add results
     df["Topsis Score"] = score.round(6)
     df["Rank"] = df["Topsis Score"].rank(ascending=False).astype(int)
 
     df = df.sort_values("Rank")
 
-    # TEMP: Just save file (Replace later with TOPSIS logic)
-    df.to_csv("result.csv", index=False)
+    # Save result CSV
+    result_csv = df.to_csv(index=False)
 
-    send_email(email, df.to_csv(index=False))
+    # Send Email
+    try:
+        send_email(email, result_csv)
+    except Exception as e:
+        print("Email Error:", e)
 
-
-    result_html = df.to_html(classes="table table-sm table-bordered table-striped", index=False)
-
+    result_html = df.to_html(
+        classes="table table-sm table-bordered table-striped",
+        index=False
+    )
 
     return render_template("result.html", table=result_html)
- 
+
 
 # EMAIL FUNCTION
-ddef send_email(receiver_email, content_csv):
+def send_email(receiver_email, content_csv):
 
     sender_email = os.environ.get("EMAIL_USER")
     sender_password = os.environ.get("EMAIL_PASS")
@@ -130,9 +124,8 @@ ddef send_email(receiver_email, content_csv):
         server.login(sender_email, sender_password)
         server.send_message(msg)
 
-# RUN APP
-import os
 
+# RUN APP
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
