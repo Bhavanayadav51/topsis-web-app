@@ -100,26 +100,33 @@ def process():
 
 # EMAIL FUNCTION
 def send_email(receiver):
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = "TOPSIS Result"
+        msg["From"] = "bhavanayadav5100@gmail.com"
+        msg["To"] = receiver
 
-    msg = EmailMessage()
-    msg["Subject"] = "TOPSIS Result"
-    msg["From"] = "bhavana5100@gmail.com"
-    msg["To"] = receiver
+        msg.set_content("Please find attached TOPSIS result")
 
-    msg.set_content("Please find attached TOPSIS result")
+        with open("result.csv", "rb") as f:
+            msg.add_attachment(
+                f.read(),
+                maintype="application",
+                subtype="octet-stream",
+                filename="result.csv"
+            )
 
-    with open("result.csv", "rb") as f:
-        msg.add_attachment(
-            f.read(),
-            maintype="application",
-            subtype="octet-stream",
-            filename="result.csv"
-        )
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(
+                "bhavanayadav5100@gmail.com",
+                os.environ.get("EMAIL_PASSWORD")
+            )
+            smtp.send_message(msg)
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login("bhavanayadav5100@gmail.com", os.environ.get("EMAIL_PASSWORD"))
-        smtp.send_message(msg)
+        print("Email sent successfully")
 
+    except Exception as e:
+        print("Email error:", e)
 
 # RUN APP
 import os
